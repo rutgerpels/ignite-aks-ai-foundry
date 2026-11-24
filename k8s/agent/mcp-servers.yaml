@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: caldova
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-plant-signals
+  namespace: caldova
+  labels: { app: mcp-plant-signals, role: mcp }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mcp-plant-signals }
+  template:
+    metadata:
+      labels: { app: mcp-plant-signals, role: mcp }
+    spec:
+      containers:
+        - name: server
+          image: ${ACR}/caldova-mcp-plant-signals:${TAG}
+          ports: [{ containerPort: 8080 }]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-plant-signals
+  namespace: caldova
+spec:
+  selector: { app: mcp-plant-signals }
+  ports: [{ port: 8080, targetPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-maintenance
+  namespace: caldova
+  labels: { app: mcp-maintenance, role: mcp }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mcp-maintenance }
+  template:
+    metadata:
+      labels: { app: mcp-maintenance, role: mcp }
+    spec:
+      containers:
+        - name: server
+          image: ${ACR}/caldova-mcp-maintenance:${TAG}
+          ports: [{ containerPort: 8080 }]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-maintenance
+  namespace: caldova
+spec:
+  selector: { app: mcp-maintenance }
+  ports: [{ port: 8080, targetPort: 8080 }]

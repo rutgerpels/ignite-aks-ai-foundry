@@ -1,0 +1,56 @@
+# The troubleshooting agent runs in a Kata micro-VM (AKS pod sandboxing):
+# its own guest kernel, isolated from the node and from other pods.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+  namespace: caldova
+data:
+  LLM_BASE_URL: "http://${LLM_IP}:11434/v1"
+  LLM_MODEL: "qwen2.5:1.5b"
+  VISION_MODEL: "moondream"
+  MCP_PLANT_SIGNALS_URL: "http://mcp-plant-signals:8080/mcp"
+  MCP_MAINTENANCE_URL: "http://mcp-maintenance:8080/mcp"
+  SANDBOX_RUNTIME: "kata-vm-isolation"
+  APPLICATIONINSIGHTS_CONNECTION_STRING: "${APPINSIGHTS_CS}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: caldova-agent
+  namespace: caldova
+  labels: { app: caldova-agent, role: agent }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: caldova-agent }
+  template:
+    metadata:
+      labels: { app: caldova-agent, role: agent }
+    spec:
+      runtimeClassName: kata-vm-isolation
+      nodeSelector:
+        sandbox: kata
+      containers:
+        - name: agent
+          image: ${ACR}/caldova-agent:${TAG}
+          ports: [{ containerPort: 8080 }]
+          envFrom:
+            - configMapRef: { name: agent-config }
+          # Kata sizes the micro-VM from the limits.
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: caldova-agent
+  namespace: caldova
+spec:
+  type: LoadBalancer
+  selector: { app: caldova-agent }
+  ports: [{ port: 80, targetPort: 8080 }]

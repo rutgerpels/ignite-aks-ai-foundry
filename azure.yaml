@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: ignite-aks-ai-foundry
+metadata:
+  template: ignite-aks-ai-foundry@0.1.0
+infra:
+  provider: bicep
+  path: infra
+  module: main
+hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: ./scripts/preprovision.ps1
+      interactive: true
+    posix:
+      shell: sh
+      run: ./scripts/preprovision.sh
+      interactive: true
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./scripts/deploy-apps.ps1
+      interactive: true
+    posix:
+      shell: sh
+      run: pwsh ./scripts/deploy-apps.ps1
+      interactive: true

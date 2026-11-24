@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Caldova Pharmaceuticals - Plant 2 line operations</title>
+<style>
+  body { font-family: Segoe UI, system-ui, sans-serif; margin: 0; background: #0f1720; color: #e6edf3; }
+  header { padding: 16px 24px; background: #17212b; display: flex; justify-content: space-between; align-items: center; }
+  header small { color: #8b98a5; }
+  main { display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; padding: 20px 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .line { background: #1c2833; border-radius: 10px; padding: 12px; cursor: pointer; border: 2px solid transparent; }
+  .line:hover { border-color: #3d8bfd; }
+  .line.bad { border-color: #f85149; background: #2d1b1e; }
+  .line h3 { margin: 0 0 4px; font-size: 15px; }
+  .pill { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #238636; }
+  .bad .pill { background: #f85149; }
+  .muted { color: #8b98a5; font-size: 12px; }
+  section.panel { background: #17212b; border-radius: 10px; padding: 16px; min-height: 420px; }
+  button { background: #3d8bfd; color: white; border: 0; padding: 8px 14px; border-radius: 6px; margin-right: 8px; cursor: pointer; }
+  button.alt { background: #6e40c9; } button.ghost { background: #30363d; }
+  pre { white-space: pre-wrap; background: #0d1117; padding: 12px; border-radius: 6px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; } td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #30363d; }
+  img { max-width: 100%; border-radius: 6px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <div><strong>Caldova Pharmaceuticals</strong> &middot; Plant 2 (Cork) production lines</div>
+  <small id="cfg">loading...</small>
+</header>
+<main>
+  <div><div class="grid" id="lines"></div></div>
+  <section class="panel">
+    <h2 id="title">Select a line</h2>
+    <div id="actions" style="display:none">
+      <button onclick="run('guided')">Troubleshoot (guided agent)</button>
+      <button class="alt" onclick="run('autonomous')">Troubleshoot (autonomous tool calling)</button>
+      <button class="ghost" onclick="inspectCam()">Inspect seal camera (vision model)</button>
+    </div>
+    <div id="out"></div>
+  </section>
+</main>
+<script>
+let current = null;
+async function j(url, opts) { const r = await fetch(url, opts); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+async function init() {
+  const cfg = await j('/api/config');
+  document.getElementById('cfg').textContent = `model: ${cfg.llm_model} | vision: ${cfg.vision_model} | sandbox: ${cfg.sandbox}`;
+  const lines = await j('/api/lines');
+  document.getElementById('lines').innerHTML = lines.map(l => `
+    <div class="line ${l.status !== 'running' ? 'bad' : ''}" onclick="select('${l.line_id}')">
+      <h3>${l.line_id.toUpperCase()} <span class="pill">${l.status}</span></h3>
+      <div class="muted">${l.product}<br>${l.equipment_id} &middot; OEE ${(l.oee * 100).toFixed(0)}%</div>
+    </div>`).join('');
+}
+function select(id) {
+  current = id;
+  document.getElementById('title').textContent = id.toUpperCase();
+  document.getElementById('actions').style.display = 'block';
+  document.getElementById('out').innerHTML = '';
+}
+async function run(mode) {
+  const out = document.getElementById('out');
+  out.innerHTML = `<p class="muted">Agent running in ${mode} mode on CPU models... this can take 30-90 seconds.</p>`;
+  try {
+    const r = await j('/api/troubleshoot', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ line_id: current, mode }) });
+    out.innerHTML = `<h3>Root-cause analysis <span class="muted">(${r.model}, ${r.seconds}s)</span></h3><pre>${esc(r.analysis)}</pre>
+      <h3>MCP tool calls</h3><table><tr><th>server</th><th>tool</th><th>args</th><th>ms</th></tr>
+      ${r.tool_calls.map(t => `<tr><td>${t.server}</td><td>${t.tool}</td><td>${esc(JSON.stringify(t.args))}</td><td>${t.ms}</td></tr>`).join('')}</table>
+      <p class="muted">tokens: ${JSON.stringify(r.usage)}</p>`;
+  } catch (e) { out.innerHTML = `<pre>${esc(e.message)}</pre>`; }
+}
+async function inspectCam() {
+  const out = document.getElementById('out');
+  out.innerHTML = '<p class="muted">Sending camera frame to the vision model...</p>';
+  try {
+    const r = await j('/api/inspect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ line_id: current }) });
+    out.innerHTML = `<img src="data:image/png;base64,${r.image_base64}"><h3>Vision model <span class="muted">(${r.model}, ${r.seconds}s)</span></h3><pre>${esc(r.description)}</pre>`;
+  } catch (e) { out.innerHTML = `<pre>${esc(e.message)}</pre>`; }
+}
+function esc(s) { return String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+init().catch(e => document.getElementById('lines').textContent = e.message);
+</script>
+</body>
+</html>

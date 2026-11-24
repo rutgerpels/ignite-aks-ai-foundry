@@ -1,0 +1,96 @@
+# CPU stand-in for GPU model serving (session: Llama 70B / Qwen3-VL via AKS AI Manager).
+# Ollama exposes an OpenAI-compatible API at /v1, the same contract as AI Manager and Foundry endpoints.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: models
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: models
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: managed-csi-premium
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: models
+  labels: { app: ollama }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: ollama }
+  template:
+    metadata:
+      labels: { app: ollama }
+    spec:
+      nodeSelector:
+        workload: cpu-models
+      containers:
+        - name: ollama
+          image: docker.io/ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+          env:
+            - { name: OLLAMA_KEEP_ALIVE, value: "24h" }
+            - { name: OLLAMA_NUM_PARALLEL, value: "2" }
+            - { name: OLLAMA_MAX_LOADED_MODELS, value: "2" }
+          resources:
+            requests: { cpu: "5", memory: 20Gi }
+            limits: { memory: 26Gi }
+          volumeMounts:
+            - { name: models, mountPath: /root/.ollama }
+          readinessProbe:
+            httpGet: { path: /api/version, port: 11434 }
+            periodSeconds: 10
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: models
+  annotations:
+    # Private IP in the cloud VNet so the agents cluster (and the flex/edge site) can reach it.
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector: { app: ollama }
+  ports:
+    - port: 11434
+      targetPort: 11434
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pull-models
+  namespace: models
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: pull
+          image: docker.io/curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              until curl -sf http://ollama:11434/api/version; do sleep 5; done
+              for m in qwen2.5:1.5b moondream; do
+                echo "pulling $m"
+                curl -sf -X POST http://ollama:11434/api/pull -d "{\"model\":\"$m\",\"stream\":false}"
+                echo
+              done
