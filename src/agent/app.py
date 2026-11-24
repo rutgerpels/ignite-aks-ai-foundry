@@ -72,10 +72,14 @@ if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
     os.environ.setdefault("OTEL_SERVICE_NAME", "caldova-agent")
     os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
     from azure.monitor.opentelemetry import configure_azure_monitor
-    from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 
     configure_azure_monitor()
-    OpenAIInstrumentor().instrument()
+    try:
+        from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+
+        OpenAIInstrumentor().instrument()
+    except Exception as exc:  # beta package; tracing of model calls is optional
+        print(f"OpenAI instrumentation disabled: {exc}")
 
 app = FastAPI(title="Caldova troubleshooting agent")
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")

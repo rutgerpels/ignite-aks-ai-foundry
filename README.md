@@ -54,7 +54,7 @@ Open `AGENT_URL`, pick **line-7** and run **Guided** or **Autonomous** troublesh
 
 **Guided** runs a fixed tool plan; **Autonomous** lets the model choose the MCP tools via function calling. **Inspect** sends a camera frame to a vision model.
 
-Models: `qwen2.5:1.5b` (chat) and `moondream` (vision) on CPU with Ollama, so it works without GPU quota. Module 02 swaps it for an AI Manager GPU deployment with a single configmap change.
+Models: `qwen2.5:1.5b` (chat) and `moondream` (vision) on CPU with Ollama, so it works without GPU quota. Expect about 30 s per guided run. The 1.5B model is weak at multi-step tool calling in **Autonomous** mode (it often stops after one tool). That's a good set-up for module 02, where AI Manager serves a larger model on GPU. Module 02 swaps it for an AI Manager GPU deployment with a single configmap change.
 
 ## Repo layout
 

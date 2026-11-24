@@ -4,10 +4,12 @@
 
 ## Agent traces in Application Insights / Foundry
 
-The agent sends OpenTelemetry (`gen_ai.*` spans, including prompts and tool calls) to `appi-*` when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set. `deploy-apps.ps1` sets it automatically.
+The agent sends OpenTelemetry (requests, logs, exceptions) to `appi-*` when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set. `deploy-apps.ps1` sets it automatically. The response trace in the UI lists each MCP tool call with its latency.
+
+> **Optional gen_ai spans:** if you add `opentelemetry-instrumentation-openai-v2` to `src/agent/requirements.txt`, `app.py` instruments the OpenAI client and emits `gen_ai.*` spans with prompts and token usage. This beta package is currently incompatible with the OTel version that `azure-monitor-opentelemetry` pins. The agent detects that and skips it.
 
 1. Run a troubleshoot in the UI.
-2. Azure portal → `appi-*` → **Transaction search** → filter on cloud role `caldova-agent`. Each run contains the HTTP request, the LLM calls and the MCP tool calls.
+2. Azure portal → `appi-*` → **Transaction search** → filter on cloud role `caldova-agent`.
 3. Foundry portal → your project → **Tracing** → connect the same App Insights resource. The traces now show up in Foundry, even though the agent runs on AKS.
 
 KQL (Log Analytics `log-*`):
