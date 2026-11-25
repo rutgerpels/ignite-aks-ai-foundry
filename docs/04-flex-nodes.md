@@ -2,18 +2,26 @@
 
 **Session ref:** ~15:00–19:00 ("heterogeneous infrastructure ... multiple plants ... some things on-prem").
 
+[Previous: hosting boundary](03-foundry-aks-compute.md) | [Portal equivalent: stage 6](00-portal-guide.md#6-bring-in-the-plant-host-visual-inspection-plus-bash) | [Next: isolation](05-pod-sandboxing-agent-sandbox.md)
+
+**Learn:** VNet peering supplies an underlay, Unbounded-Net supplies pod routing, a Flex pool describes external capacity, and host bootstrap actually joins it. None alone makes the edge VM a usable Kubernetes node.
+
+**Before:** module 01's base deployment, approved Flex preview access, permissions to configure this plant cluster and assign the host role at pool scope, and an approved network/SSH path. Module 02's GPU and module 03's hosting preview are not prerequisites. This is a separate `aks-plant-*` cluster; never install this CNI on inference or agents.
+
 Flex nodes (preview) let you join a Linux machine you own and run (on-premises, another cloud, or an Azure VM) to an AKS node pool. AKS manages the control plane; you manage the host and network. In the lab:
 
 | Story | Lab resource |
 |---|---|
 | Plant 2 edge server | `vm-plant2-edge` (Ubuntu 24.04) in `vnet-plant2` 10.20.0.0/16 |
 | Plant network ↔ cloud | VNet peering (stands in for VPN/ExpressRoute) |
-| AKS cluster for the plant | `aks-plant-*`: created with `networkPlugin: none`, as the Learn walkthrough requires |
+| AKS cluster for the plant | `aks-plant-*`: created with `networkPlugin: none` for this walkthrough |
 | Host identity | user-assigned identity `id-vm-plant2-edge` on the VM |
 
 > The flex walkthrough installs **Unbounded-Net** as the cluster CNI, so it uses its own cluster. The inference and agent clusters keep Azure CNI + Cilium, which AI Manager needs.
 >
 > Before you start, the plant cluster's single node is **NotReady**. That's expected: it has no CNI until you install Unbounded-Net.
+
+This is the selected topology, not a claim that every Flex deployment must use `networkPlugin: none`: the current preparation article also discusses existing Azure CNI/Cilium clusters with compatible customer-managed networking for external hosts.
 
 ## Address plan used by the lab
 
@@ -27,7 +35,7 @@ Flex nodes (preview) let you join a Linux machine you own and run (on-premises, 
 
 ## 0. Prepare a Bash environment
 
-The Learn articles use Bash. On Windows, use **WSL (Ubuntu)**, with `az`, `aks-preview`, `kubectl`, `jq`, `curl` and `sha256sum` installed. The edge VM NSG only allows SSH from the public IP you deployed from. If you use another machine, update the NSG rule `allow-ssh-from-operator` in `nsg-plant2-edge`.
+The Learn articles use Linux-compatible Bash. On Windows, use **WSL (Ubuntu)** with `az`, `aks-preview`, `kubectl`, `jq`, `curl`, `tar` and `sha256sum`. The lab NSG definition allows SSH from the deployment operator's public IP; effective governance rules can further restrict it. If the approved path changes, have the network owner review access; do not override managed NSGs. Cloud Shell is still a command line and is suitable only if it has the tools, files and network path; it is not the edge host.
 
 Generate the shared environment file from your azd outputs (PowerShell, in the repo root):
 
@@ -55,6 +63,8 @@ ssh -i "${SSH_PRIVATE_KEY_PATH}" "${FLEX_HOST_SSH_TARGET}" hostname   # -> vm-pl
 > **Versions:** the Learn articles pin compatible versions of `AKS_VERSION`, `UNBOUNDED_VERSION` and `AKS_FLEX_NODE_VERSION`. The generated file uses the plant cluster's current version. If the docs require a different one (e.g. `1.36.2`), upgrade the plant cluster first:
 > `az aks upgrade -g $RESOURCE_GROUP -n $CLUSTER_NAME -k <version> --yes`. Then update `AKS_VERSION` with `set_flexnode_env AKS_VERSION <version>`.
 > Also check that the region runs AKS release **v20260904 or later** in the [release tracker](https://releases.aks.azure.com/AKSRelease).
+
+The helper pins `AKS_PREVIEW_VERSION`, `UNBOUNDED_VERSION` and `AKS_FLEX_NODE_VERSION`; compare them with the current articles before use. Its successful generation is not a compatibility check. Review versions/upgrades with the cluster owner; do not upgrade unrelated clusters for this exercise.
 
 ## 1. Prepare the cluster
 
@@ -92,6 +102,8 @@ set_flexnode_env FLEX_POOL_RESOURCE_ID "${AKS_RESOURCE_ID}/agentPools/${FLEX_POO
 
 Teaching point: there's no VM size, count or subnet on a flex pool. It's a logical group for compute you bring.
 
+**Checkpoint before host attachment:** complete the linked networking article's operator/controller/daemon rollout checks, node readiness and `kubectl get sites,sitepeerings -o wide`. Require both Sites, the intended mesh peering and managed nodes assigned to `cluster`; `flex-site` has no hosts yet. Verify the pool has provisioning state `Succeeded` and type `FlexNodes`. The abbreviated commands above do not replace the article's SitePeering and conditional daemon RBAC steps.
+
 ## 3. Host and identity
 
 Follow [Prepare a flex node host and identity](https://learn.microsoft.com/azure/aks/prepare-flex-node-host-identity) and choose the **Azure VM managed identity → user-assigned** path. The lab already created the identity and attached it to the VM, and `HOST_IDENTITY_CLIENT_ID` / `HOST_PRINCIPAL_OBJECT_ID` are pre-filled. Do the role assignment yourself; it's scoped to the **flex pool**, not the cluster:
@@ -119,6 +131,8 @@ Follow [Attach a flex node to an AKS cluster](https://learn.microsoft.com/azure/
      bash /tmp/bootstrap.sh --auth msi --msi-client-id "${HOST_IDENTITY_CLIENT_ID}" \
      --agent-url "file:///tmp/${AGENT_ARCHIVE}" --agent-sha256 "${AGENT_SHA256}"
    ```
+
+The ellipsis above is a hand-off to the article's full command, not executable syntax. Run its complete **Download and verify**, **Fetch current pool bootstrap data**, **Transfer files**, and **Bootstrap the host** sections in order. Set referenced archive/checksum/identity variables in the correct shell; exported workstation variables do not automatically exist inside SSH. Never print or commit bootstrap data; regenerate expired data, and remove temporary sensitive files as the article directs.
 
 ## 5. Validate (demo moment)
 
@@ -153,7 +167,9 @@ kubectl -n plant2 get pod -o wide        # NODE = vm-plant2-edge
 kubectl -n plant2 logs deploy/mcp-plant-signals   # proves the control plane → kubelet path
 ```
 
-Talking point: the telemetry stays in the plant, while the agent in the cloud calls the tool over the private network.
+**Expected:** an attached Ready node and a mock MCP pod actually placed on the edge host. Also complete the attachment article's Site assignment, Unbounded-Net pod, agent-service, callbacks and cross-site connectivity checks; node presence alone is insufficient.
+
+Talking point: this demonstrates plant-local tool placement using fictional data. It does **not** make the cloud agent call that pod: this example creates a Deployment, not a cross-cluster Service or MCP URL update. The baseline cloud agent still uses its same-cluster MCP server. Routing real plant data to the cloud would be a separate reviewed exercise, not a claim that telemetry automatically stays local.
 
 ## Troubleshooting
 
@@ -164,3 +180,7 @@ Talking point: the telemetry stays in the plant, while the agent in the cloud ca
 | Agent exits, "cache sync" | the temporary `aks-flex-node-daemon` RBAC is missing |
 | `kubectl logs` times out | NSG/peering: AKS → node TCP 10250 |
 | Agent logs on host | `journalctl -u aks-flex-node-agent -f` |
+
+Use the [portal inspection route](00-portal-guide.md#6-bring-in-the-plant-host-visual-inspection-plus-bash) for VM identity, peering and workload views. The current documented end-to-end setup needs Bash and a host action; generic portal YAML support does not replace host bootstrap.
+
+**Carry forward:** dedicated kubeconfig, protected environment file, machine/pool identity and validated placement evidence. [Module 05](05-pod-sandboxing-agent-sandbox.md) returns to `aks-agents-*`; do not accidentally reuse the plant kubeconfig. Remove validation workloads when finished and follow [module 08](08-cleanup.md) for teardown.
