@@ -11,5 +11,5 @@ if [ -z "$(azd env get-value ALLOWED_SSH_SOURCE 2>/dev/null)" ]; then
 fi
 for f in AIManagerPreview AKSFlexNodePreview PutMachinePreview KataVMIsolationPreview KataVMIsolationV2Preview AgentSandboxPreview; do
   s="$(az feature show --namespace Microsoft.ContainerService --name $f --query properties.state -o tsv 2>/dev/null || true)"
-  [ "$s" = "Registered" ] || echo "WARNING: feature $f is '$s'. Run docs/01-prerequisites.md first."
+  [ "$s" = "Registered" ] || echo "WARNING: feature $f is '$s'. Complete module 01 in docs/code/ or docs/portal/ first."
 done

@@ -2,7 +2,7 @@
 
 **Session ref:** ~30:00-34:00, observable and auditable infrastructure.
 
-[Previous: network evidence](06-agent-grid.md) | [Portal equivalent: stage 9](00-portal-guide.md#9-observe-cost-and-clean-up) | [Next: cleanup](08-cleanup.md)
+[Previous: network evidence](06-agent-grid.md) | [Code experience](README.md) | [Next: cleanup](08-cleanup.md)
 
 **Learn:** distinguish a useful browser result, application telemetry, cluster metrics and network-policy logs. Connect these observations to the baseline recorded in module 01 and any changes actually made in modules 02-06.
 
@@ -70,7 +70,7 @@ The browser's `tool_calls`/latencies and model `usage` are response JSON assembl
 | Edge VM | 1x D4s_v5 plus disk and public IP. |
 | Other | AKS tiers, disks, load balancers, public IPs, ACR Basic, monitoring ingestion/retention, network traffic and optional preview dependencies. |
 
-Open **Cost Management > Cost analysis** at the appropriate subscription scope and group by resource/service for the lab period. Include AKS-managed resource groups and optional resources outside the lab group. Compare AI Manager's calculator only with **VM cost per replica**; it is not a total-cost estimator. There is no fixed price guarantee here.
+Open **Cost Management > Cost analysis** at the appropriate subscription scope and group by resource/service for the lab period. Include AKS-managed resource groups and optional resources outside the lab group, particularly a separate Malaysia West GPU tier from module 02. Cross-region traffic can add charges. Compare AI Manager's calculator only with **VM cost per replica**; it is not a total-cost estimator or a verified Spot quote. There is no fixed price guarantee here.
 
 For a pause, inspect target names and ask the resource owner before stopping anything shared. Azure portal provides AKS stop/start and VM lifecycle controls. Equivalent PowerShell:
 

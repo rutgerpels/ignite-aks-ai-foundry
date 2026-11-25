@@ -8,12 +8,12 @@ A reproducible lab based on the Microsoft Ignite session **"Deploy and run Micro
 
 | Track | Start here | What you will learn |
 |---|---|---|
-| **Portal-first / visual** | [Portal guide and capability matrix](docs/00-portal-guide.md) | Inspect resources, deploy/test an AI Manager model and configure Agent Grid visually; explicit terminal hand-offs for reproducible setup and host bootstrap. |
-| **Code-first** | [01 – Prerequisites](docs/01-prerequisites.md), then modules 02–08 | Keep the PowerShell/Bash, Bicep and Kubernetes experience, with purpose, checkpoints and links to equivalent portal steps. |
+| **Portal experience** | [Portal modules 01–08](docs/portal/README.md) | Portal/browser steps, visual checkpoints and required terminal steps together in each module. No code-track detours. |
+| **Code experience** | [Code modules 01–08](docs/code/README.md) | PowerShell/Bash, Bicep and Kubernetes workflows, with their own prerequisites, checkpoints and cleanup. |
 
-Both tracks share **one deployment**, not separate environments. Learn the CPU agent/tool/model flow first, then change one layer at a time: model serving → hosting boundary → edge compute → isolation → network policy → evidence/cost. Preview exercises are optional and access-dependent. The Foundry own-AKS hosting path is an **access-gated discussion**, not a verified public walkthrough; the base is a plain FastAPI app on AKS.
+Choose one track and stay in its folder from setup to cleanup. Both tracks describe **the same baseline deployment**; do not deploy it twice. Module 02 also explains the optional separate-region GPU deployment without moving the base. Learn the CPU agent/tool/model flow first, then change one layer at a time: model serving → hosting boundary → edge compute → isolation → network policy → evidence/cost. Preview exercises are optional and access-dependent. The Foundry own-AKS hosting path is an **access-gated discussion**, not a verified public walkthrough; the base is a plain FastAPI app on AKS.
 
-Portal capabilities and preview requirements were checked against Microsoft documentation on **25 November 2026**; the [source register](docs/00-portal-guide.md#source-register) records the references. No live portal/deployment verification is implied.
+Portal capabilities and preview requirements were checked against Microsoft documentation on **25 November 2026**. Each module links its authoritative references; the [portal source register](docs/portal/README.md#source-register) collects them. This is not a claim that every preview was deployed or tested.
 
 ## Architecture
 
@@ -34,25 +34,25 @@ flowchart LR
     A -. "module 02 endpoint change" .-> G["Optional AI Manager GPU model"]
 ```
 
-For the actual baseline call paths and optional relationships, see the [visual learning path](docs/00-portal-guide.md#the-learning-path). The edge VM is not attached until module 04; the baseline uses the legacy Kata RuntimeClass, not the Kata v2 runtime required by the current Agent Sandbox guide.
+The edge VM is not attached until module 04; the baseline uses the legacy Kata RuntimeClass, not the Kata v2 runtime required by the current Agent Sandbox guide. Each track explains these boundaries before its optional exercises.
 
 ## Session → lab map
 
-| Session (approx.) | Topic | Module |
-|---|---|---|
-| 00:00–06:30 | Agents rewrite infrastructure; AKS as the AI foundation | – |
-| 06:30–09:00 | AKS AI Manager: deploy open-weight Foundry models to AKS with one API | [02](docs/02-aks-ai-manager.md) |
-| 09:00–12:30 | Caldova scenario, production-line app | `azd up` → agent UI |
-| 12:30–15:00 | Foundry **AKS compute** preview: hosting boundary and access gates | [03](docs/03-foundry-aks-compute.md) |
-| 15:00–19:00 | Heterogeneous, on-prem, multi-plant: **Flex nodes** | [04](docs/04-flex-nodes.md) |
-| 20:00–24:00 | Sandboxing: **Kata** / **Agent Sandbox** | [05](docs/05-pod-sandboxing-agent-sandbox.md) |
-| 24:00–30:00 | Policy and governed egress: **Agent Grid** | [06](docs/06-agent-grid.md) |
-| 30:00+ | Observable, auditable, cost | [07](docs/07-observability-cost.md) |
+| Session (approx.) | Topic | Portal | Code |
+|---|---|---|---|
+| 00:00–06:30 | AKS foundation, access and baseline preparation | [01](docs/portal/01-prerequisites.md) | [01](docs/code/01-prerequisites.md) |
+| 06:30–09:00 | AI Manager: open-weight models on AKS | [02](docs/portal/02-aks-ai-manager.md) | [02](docs/code/02-aks-ai-manager.md) |
+| 09:00–12:30 | Caldova production-line app and CPU baseline | [01](docs/portal/01-prerequisites.md#5-establish-the-browser-baseline) | [01](docs/code/01-prerequisites.md#checkpoint-and-recovery) |
+| 12:30–15:00 | Foundry hosting boundary and access gates | [03](docs/portal/03-foundry-aks-compute.md) | [03](docs/code/03-foundry-aks-compute.md) |
+| 15:00–19:00 | Multi-plant compute with Flex nodes | [04](docs/portal/04-flex-nodes.md) | [04](docs/code/04-flex-nodes.md) |
+| 20:00–24:00 | Kata / Agent Sandbox | [05](docs/portal/05-pod-sandboxing-agent-sandbox.md) | [05](docs/code/05-pod-sandboxing-agent-sandbox.md) |
+| 24:00–30:00 | Agent Grid and governed egress | [06](docs/portal/06-agent-grid.md) | [06](docs/code/06-agent-grid.md) |
+| 30:00+ | Evidence and cost, followed by cleanup | [07](docs/portal/07-observability-cost.md) / [08](docs/portal/08-cleanup.md) | [07](docs/code/07-observability-cost.md) / [08](docs/code/08-cleanup.md) |
 
 ## Quick start
 
 ```powershell
-# see docs/01-prerequisites.md for tools, feature flags and preview sign-ups
+# See module 01 in docs/code/ or docs/portal/ before running this new-environment example.
 azd auth login            # or: azd config set auth.useAzCliAuth true
 azd env new ignite-aks
 azd env set AZURE_LOCATION swedencentral
@@ -69,7 +69,7 @@ After the `pull-models` job completes, open `AGENT_URL`, pick **line-7** and run
 
 Models: `qwen2.5:1.5b` (chat) and `moondream` (vision) on CPU with Ollama, so no GPU quota is needed for the base. Duration varies; record your baseline. The 1.5B model is weak at multi-step tool calling in **Autonomous** mode (it often stops after one tool). Module 02 compares a GPU model after endpoint, authentication and rollout changes; it is not just a ConfigMap change.
 
-**Checkpoint:** Guided returns analysis and tool timings; an assigned IP or `/healthz` alone does not prove model readiness. The demo is unauthenticated HTTP with fictional data, not a production endpoint. If governance-managed NSGs block the URL, do not bypass them: use the [approved-access troubleshooting path](docs/00-portal-guide.md#3-establish-the-cpu-application-baseline).
+**Checkpoint:** Guided returns analysis and tool timings; an assigned IP or `/healthz` alone does not prove model readiness. The demo is unauthenticated HTTP with fictional data, not a production endpoint. If governance-managed NSGs block the URL, do not bypass them: module 01 in either track includes the approved-access procedure.
 
 ## Repo layout
 
@@ -80,8 +80,9 @@ Models: `qwen2.5:1.5b` (chat) and `moondream` (vision) on CPU with Ollama, so no
 | `src/mcp-*` | Mock MCP servers (Streamable HTTP) with Caldova line data and manuals |
 | `k8s/` | Ollama, agent (Kata runtime), MCP servers, network policy |
 | `scripts/` | `deploy-apps.ps1` (postprovision), `new-flex-env.ps1` (module 04) |
-| `docs/` | Portal-first guide 00 and code modules 01–08 |
+| `docs/code/` | Complete code experience: modules 01–08 |
+| `docs/portal/` | Complete portal experience: modules 01–08, including necessary terminal steps |
 
 ## Disclaimer
 
-Several features are **preview / limited preview**, change often and are not intended for production use. Check each module's current access, version, region and cost gates before executing commands. Caldova is fictional. Do not change governance controls to make a demo work. Clean up with [module 08](docs/08-cleanup.md).
+Several features are **preview / limited preview**, change often and are not intended for production use. Check each module's current access, version, region and cost gates before deploying. Caldova is fictional. Do not change governance controls to make a demo work. Finish module 08 in your chosen track even after a partial deployment.
