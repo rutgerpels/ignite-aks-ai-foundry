@@ -11,7 +11,7 @@ Portal-first does not mean command-free. Exact baseline deployment, host bootstr
 | Order | Module | Main surface | What you accomplish |
 |---|---|---|---|
 | 01 | [Access, setup and CPU baseline](01-prerequisites.md) | Azure portal + local PowerShell + app browser | Prepare access, deploy once and record a working baseline. |
-| 02 | [AI Manager](02-aks-ai-manager.md) | Azure portal + Kubernetes YAML editor | Deploy/test a GPU model, then connect chat without breaking vision. |
+| 02 | [Model serving](02-aks-ai-manager.md) | Foundry/Azure portal + Kubernetes YAML editor | Keep CPU, use Foundry serverless chat, or test AI Manager GPU inference without breaking vision. |
 | 03 | [Foundry project and hosting boundary](03-foundry-aks-compute.md) | Foundry portal + Azure portal | Inspect the project and identify the own-AKS preview boundary. |
 | 04 | [Flex nodes](04-flex-nodes.md) | Azure portal + Bash + Linux host | Join the edge host and prove workload placement. |
 | 05 | [Kata and Agent Sandbox](05-pod-sandboxing-agent-sandbox.md) | Azure portal + runtime checks | Separate the working legacy runtime from optional Kata v2 Sandbox. |
@@ -60,7 +60,7 @@ Module 01 establishes the working base. Modules 02-06 are optional, independentl
 
 ## Source register
 
-**Documentation checked: 25 November 2026.** UI names are grounded in the following Microsoft documentation, not fabricated screenshots. Official screenshots are available in the linked articles. Preview controls, access and regions can change; a missing control is not permission to guess a replacement or weaken governance.
+**Documentation checked: 25 November 2026; Foundry serverless references checked 26 November 2026.** UI names are grounded in the following Microsoft documentation, not fabricated screenshots. Official screenshots are available in the linked articles. Preview controls, access and regions can change; a missing control is not permission to guess a replacement or weaken governance.
 
 | Topic | Reference |
 |---|---|
@@ -69,6 +69,7 @@ Module 01 establishes the working base. Modules 02-06 are optional, independentl
 | AI Manager deploy, SKU selection and playground | [Quickstart, Azure portal tab](https://learn.microsoft.com/azure/aks/ai-manager/quickstart) |
 | AI Manager scaling and deletion | [Manage deployments](https://learn.microsoft.com/azure/aks/ai-manager/manage-deployments) |
 | Model plans, endpoints and roles | [Estimate cost](https://learn.microsoft.com/azure/aks/ai-manager/estimate-cost), [Connect](https://learn.microsoft.com/azure/aks/ai-manager/connect-to-endpoint), [Grant access](https://learn.microsoft.com/azure/aks/ai-manager/grant-access) |
+| Foundry serverless | [Deploy models](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/deploy-foundry-models), [endpoints](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/endpoints), [deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types) |
 | Foundry hosting boundary | [Hosted agents](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) |
 | Flex setup | [Networking](https://learn.microsoft.com/azure/aks/configure-flex-nodes-networking), [Host/identity](https://learn.microsoft.com/azure/aks/prepare-flex-node-host-identity), [Attach](https://learn.microsoft.com/azure/aks/attach-flex-node-to-aks) |
 | Runtime and Sandbox gates | [Agent Sandbox extension](https://learn.microsoft.com/azure/aks/agent-sandbox-cluster-extension) |

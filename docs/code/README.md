@@ -11,7 +11,7 @@ The original Bicep, scripts, manifests and application workflow remain the code 
 | Order | Module | What you accomplish |
 |---|---|---|
 | 01 | [Access, setup and CPU baseline](01-prerequisites.md) | Check permissions/quota, deploy once, verify Guided and record a baseline. |
-| 02 | [AI Manager](02-aks-ai-manager.md) | Optionally deploy one feasible GPU model, test it, switch chat safely and retain rollback. |
+| 02 | [Model serving](02-aks-ai-manager.md) | Keep CPU or switch chat to Foundry serverless or AI Manager GPU, retaining vision and rollback. |
 | 03 | [Foundry project and hosting boundary](03-foundry-aks-compute.md) | Inspect the project; distinguish the AKS app from access-gated hosted-agent onboarding. |
 | 04 | [Flex nodes](04-flex-nodes.md) | Prepare plant networking, bootstrap the edge host and verify workload placement. |
 | 05 | [Kata and Agent Sandbox](05-pod-sandboxing-agent-sandbox.md) | Verify baseline isolation; attempt Sandbox only with genuine Kata v2 capacity. |

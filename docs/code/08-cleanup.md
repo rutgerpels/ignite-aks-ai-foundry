@@ -8,7 +8,7 @@
 
 ## 1. Remove optional consumers and attachments first
 
-1. If retaining the CPU app, roll it back from AI Manager before deleting the model (module 02). For full teardown, stop using its endpoints.
+1. If retaining the CPU app, roll it back from Foundry serverless or AI Manager before deleting the model (module 02). For full teardown, stop using its endpoints. In Foundry **Build > Models**, delete only the specific serverless deployment created for the lab after its consumers are rolled back; preserve shared account/project resources and check costs.
 2. Remove optional hosted agents/versions and own-AKS attachments using the approved preview instructions from module 03. The base app is not a Foundry hosted agent.
 3. Delete module 05's disposable test Sandboxes/claims/warm pools and workloads, if created, before removing their extension/capacity. Do not delete shared pools/extensions.
 4. For Agent Grid, **unenroll AKS workloads and detach the cluster before cluster deletion**. Delete the lab Grid and then unused policy-group resources; policy groups are independent resources. Preserve shared policies and Content Safety/log resources. See [Grid cleanup](https://learn.microsoft.com/azure/agent-grid/configure-agent-grid#clean-up-resources).

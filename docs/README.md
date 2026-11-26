@@ -14,7 +14,7 @@ Both use the same repository and baseline resources. These folders are alternati
 | Module | Portal experience | Code experience |
 |---|---|---|
 | 01 - Access, setup and CPU baseline | [Portal 01](portal/01-prerequisites.md) | [Code 01](code/01-prerequisites.md) |
-| 02 - AI Manager model deployment | [Portal 02](portal/02-aks-ai-manager.md) | [Code 02](code/02-aks-ai-manager.md) |
+| 02 - CPU, Foundry serverless or AI Manager | [Portal 02](portal/02-aks-ai-manager.md) | [Code 02](code/02-aks-ai-manager.md) |
 | 03 - Foundry project and hosting boundary | [Portal 03](portal/03-foundry-aks-compute.md) | [Code 03](code/03-foundry-aks-compute.md) |
 | 04 - Flex nodes and plant compute | [Portal 04](portal/04-flex-nodes.md) | [Code 04](code/04-flex-nodes.md) |
 | 05 - Kata isolation and Agent Sandbox | [Portal 05](portal/05-pod-sandboxing-agent-sandbox.md) | [Code 05](code/05-pod-sandboxing-agent-sandbox.md) |

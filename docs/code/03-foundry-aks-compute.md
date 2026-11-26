@@ -31,7 +31,7 @@ In Azure portal, locate `aif-caldova-*`. In [Foundry portal](https://ai.azure.co
    kubectl --kubeconfig .kube/agents -n caldova get pods -l app=caldova-agent -o wide
    ```
 
-4. Compare the browser `/api/config` output with module 02's chosen endpoint. Ollama or AI Manager serves inference; neither implies Foundry manages the agent lifecycle.
+4. Compare the browser `/api/config` output with module 02's chosen endpoint. Ollama, Foundry serverless or AI Manager serves chat; even Foundry model use does not imply Foundry manages the agent lifecycle.
 
 **Expected:** one plain FastAPI/MCP app runs on the agents cluster. Its App Insights connection is not a Foundry agent registration, hosting connection or automatic Content Safety/tracing guarantee.
 
