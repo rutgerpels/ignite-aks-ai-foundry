@@ -2,9 +2,11 @@
 
 Most capabilities shown in BRK420 are **preview** (some **limited preview**). Do this first; some approvals take days.
 
-[Home](../README.md) | [Portal equivalent: stages 1–3](00-portal-guide.md#1-prepare-access-region-and-budget) | [Next: models](02-aks-ai-manager.md)
+[Code experience](README.md) | [Next: models](02-aks-ai-manager.md)
 
 **Learn:** establish access and a working CPU baseline before changing model/hosting/network layers. Use a dedicated approved lab subscription/resource group. You need permissions to deploy the resources, register selected features/providers, and create role assignments (for example Owner, or Contributor plus Role Based Access Control Administrator at the necessary scope). AKS Kubernetes access is separate from Azure resource access. Do not deploy production data into this unauthenticated demo.
+
+**Before:** obtain the subscription owner's permission and a budget for disposable lab resources, then complete the tool, access and quota checks below before deploying.
 
 ## Tools
 
@@ -56,12 +58,12 @@ Default sizing: inference D4 + D8, agents D4 + D4, plant D2, edge D4. Check tota
 az vm list-usage -l swedencentral --query "[?contains(name.value,'DSv5')]" -o table
 ```
 
-If you do have GPU quota (e.g. `Standard_NC24ads_A100_v4`), module 02 shows how to deploy a real catalog model through AI Manager.
+If you have GPU quota and an approved budget, module 02 shows how to choose a feasible catalog plan and deploy one replica through AI Manager. A GPU is optional, not a requirement for this baseline.
 
 ## Deploy the base environment
 
 1. Clone/open this repo and run commands from its root in PowerShell 7. Select the intended subscription for Azure CLI and azd prompts; check `az account show --query "{subscription:id,tenant:tenantId}"`.
-2. Run the sequence below once. Choose an unused azd environment name and a region that meets the modules you intend to run.
+2. Run the sequence below once for a **new** environment. Choose an unused azd environment name and a region that meets the modules you intend to run. For an existing lab, use `azd env list` and `azd env select <existing-name>`, inspect its resources, then resume at the checkpoint instead. Do not change the existing environment's region to relocate it.
 3. Inspect any failed deployment operation and resolve the cause before retrying. Do not create replacement portal clusters alongside this deployment.
 
 ```powershell
@@ -89,6 +91,16 @@ Open the browser app, run **Guided** on line-7, and retain duration/model/tool r
 | Deployment or role assignment denied | Azure deployment operations, effective roles, preview registration and Azure Policy with the owner. Do not remove policy. |
 | Pending/image-pull/model errors | Pod events and `kubectl --kubeconfig .kube/inference -n models logs job/pull-models`; quotas, ACR permissions and download access. |
 | Credentials denied | Hooks use `--admin` for this lab. If local accounts/admin credentials are prohibited, stop and arrange approved Kubernetes access; do not enable them to bypass policy. |
-| Public demo or SSH blocked | Effective NSG/routing rules may be governance-managed. Use [approved access guidance](00-portal-guide.md#3-establish-the-cpu-application-baseline), not rule deletion. |
+| Public demo or SSH blocked | Effective NSG/routing rules may be governance-managed. Use the approved access procedure below, not rule deletion. |
+
+### Approved application access
+
+The sample is unauthenticated HTTP with fictional data. If its public URL times out, inspect Service endpoints, pod readiness and effective routes/NSGs with the platform owner. Do not remove managed controls. Where organizational policy permits it, an authorized workstation with Kubernetes API access can forward the app locally:
+
+```powershell
+kubectl --kubeconfig .kube/agents -n caldova port-forward service/caldova-agent 8080:80 --address 127.0.0.1
+```
+
+Keep the terminal open and browse `http://127.0.0.1:8080`; Ctrl+C ends the forward. This is not a permission bypass. Cloud Shell's localhost is not your workstation's localhost.
 
 **Carry forward:** `.kube/inference`, `.kube/agents`, your azd environment and baseline results. Kubeconfigs/keys are sensitive; do not commit them. [Module 02](02-aks-ai-manager.md) changes the model layer, not the MCP tool chain. [Cleanup](08-cleanup.md) applies even after a partial deployment.

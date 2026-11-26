@@ -2,7 +2,7 @@
 
 **Session ref:** 12:20-14:30, Foundry with AKS compute and hosted agents.
 
-[Previous: model layer](02-aks-ai-manager.md) | [Portal equivalent: stage 5](00-portal-guide.md#5-inspect-foundry-and-the-own-aks-access-boundary) | [Next: plant compute](04-flex-nodes.md)
+[Previous: model layer](02-aks-ai-manager.md) | [Code experience](README.md) | [Next: plant compute](04-flex-nodes.md)
 
 **Learn:** distinguish a Foundry project, an inference endpoint, an independently deployed AKS app and a Foundry hosted agent. Module 02 changes the app's model endpoint; it does not register the app with Foundry.
 

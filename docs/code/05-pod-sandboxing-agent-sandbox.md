@@ -2,7 +2,7 @@
 
 **Session ref:** ~20:00-24:00, isolated execution boundaries.
 
-[Previous: edge compute](04-flex-nodes.md) | [Portal equivalent: stage 7](00-portal-guide.md#7-inspect-kata-then-decide-on-agent-sandbox) | [Next: governed networking](06-agent-grid.md)
+[Previous: edge compute](04-flex-nodes.md) | [Code experience](README.md) | [Next: governed networking](06-agent-grid.md)
 
 **Learn:** pod kernel isolation is different from allocating an execution environment per task. The baseline uses a long-running Deployment with `runtimeClassName: kata-vm-isolation`; it does not allocate SandboxClaims for troubleshooting sessions.
 

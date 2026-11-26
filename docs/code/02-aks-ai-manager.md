@@ -4,7 +4,7 @@
 
 AI Manager is an ARM API (`Microsoft.ContainerService/aiManagers`) that installs and operates an open-source inference stack (model serving, LLM gateway, autoscaling) on an AKS cluster, so you don't wire up Helm charts yourself. It exposes **namespaces**, each with an OpenAI-compatible gateway endpoint and keys.
 
-[Previous: baseline](01-prerequisites.md) | [Portal equivalent: stage 4](00-portal-guide.md#4-deploy-and-test-a-gpu-model-in-azure-portal) | [Next: Foundry boundary](03-foundry-aks-compute.md)
+[Previous: baseline](01-prerequisites.md) | [Code experience](README.md) | [Next: Foundry boundary](03-foundry-aks-compute.md)
 
 **Learn:** replace CPU inference while retaining the browser agent and MCP tools from module 01. AI Manager has a documented **Azure portal** catalog/deploy/test/manage path; it is not command-only and is not the separate KAITO AI toolchain operator. Check the [current quickstart](https://learn.microsoft.com/azure/aks/ai-manager/quickstart) and [deployment management](https://learn.microsoft.com/azure/aks/ai-manager/manage-deployments).
 
@@ -21,37 +21,75 @@ AI Manager is an ARM API (`Microsoft.ContainerService/aiManagers`) that installs
 | System-assigned managed identity | yes |
 | Azure CNI + **Cilium** dataplane | overlay + Cilium |
 
-## Steps
+## 1. Select the inference location
+
+Keep the module 01 baseline and azd environment unchanged. Choose **one** option below. All commands run in PowerShell 7 from the repository root.
+
+**Option A - reuse the baseline inference cluster in its own region:**
 
 ```powershell
 $rg   = azd env get-value AZURE_RESOURCE_GROUP
 $aks  = azd env get-value AKS_INFERENCE_ID
 $loc  = azd env get-value AZURE_LOCATION
+$manager = 'aim-caldova'
 
-# 1. Create the AI Manager attached to the existing cluster
-az aimanager create -g $rg -n aim-caldova -l $loc --cluster-id $aks
-az aimanager show   -g $rg -n aim-caldova -o table
+az aimanager create -g $rg -n $manager -l $loc --cluster-id $aks --delete-policy Keep
+```
 
-# 2. Look at what was installed on the cluster
+`Keep` preserves the shared inference cluster when this manager is removed. For an existing manager, inspect its current deletion policy rather than assuming it was created with this setting.
+
+**Option B - create a separate GPU tier, for example in Malaysia West:**
+
+Use this only when that region offers your exact catalog model/SKU, sufficient quota and an approved budget. An ordinary AKS pool cannot be added in a different region to a Swedish cluster. The new AI Manager creates its own cluster and associated billable resources.
+
+```powershell
+$rg = 'rg-ignite-gpu-malaysia'  # choose a new dedicated test group
+$loc = 'malaysiawest'
+$manager = 'aim-caldova-my'
+az group create -g $rg -l $loc
+az aimanager create -g $rg -n $manager -l $loc
+```
+
+Do not run both options, change `AZURE_LOCATION` in the existing environment, or run the entire Bicep deployment to move inference. Keep Foundry, agents and plant resources in their original region. Agent Grid availability is separate and requires the Grid and attached compute to share a supported region.
+
+For either option, record `$rg`, `$loc` and `$manager` for all later model operations and cleanup. They can differ from azd's baseline group. Do not rerun creation if the intended manager already exists.
+
+## 2. Inspect and create a namespace
+
+```powershell
+az aimanager show -g $rg -n $manager -o table
+```
+
+**Option A only:** inspect the existing inference cluster:
+
+```powershell
 az aks get-credentials -g $rg -n (azd env get-value AKS_INFERENCE_NAME) --admin -f .kube/inference --overwrite-existing
 kubectl --kubeconfig .kube/inference get ns
 kubectl --kubeconfig .kube/inference get pods -A | Select-String -NotMatch 'kube-system'
-
-# 3. Create a namespace (a tenant/team boundary with its own gateway keys)
-az aimanager namespace create -g $rg --aimanager aim-caldova -n line-troubleshooting --labels team=manufacturing
-# Returns secrets: inspect privately, never copy into Git/screenshots.
-az aimanager namespace list-accesskeys -g $rg --aimanager aim-caldova -n line-troubleshooting
 ```
 
-### Browse the catalog and estimate cost
+**Option B:** inspect the manager-owned cluster in its resource group instead; do not overwrite `.kube/inference` with credentials for a different cluster.
+
+For either option, create a namespace, a tenant/team boundary with its own gateway keys:
+
+```powershell
+az aimanager namespace create -g $rg --aimanager $manager -n line-troubleshooting --labels team=manufacturing
+# Returns secrets: inspect privately, never copy into Git/screenshots.
+az aimanager namespace list-accesskeys -g $rg --aimanager $manager -n line-troubleshooting
+```
+
+## 3. Browse the catalog and estimate cost
 
 ```powershell
 az aimanager model list -l $loc -o table
-az aimanager model show -l $loc -n <model-name>
-az aimanager model calculate-cost -l $loc -n <model-name>
+$modelName = '<catalog-resource-name>'  # Name, not the readable modelId
+az aimanager model show -l $loc -n $modelName
+az aimanager model calculate-cost -l $loc -n $modelName -o table
 ```
 
-Discuss with the audience: which VM size the model needs, replica cost per hour, versus pay-per-token in Foundry.
+Choose your exact model/SKU combination, not merely a model with a similar name. For example, `Qwen/Qwen3.5-4B` can be a candidate to inspect; do not assume its current plan is available for every subscription. Quota approval is not an allocation guarantee. If portal and CLI plans disagree, check the exact model/region and current preview version before creating resources; record the discrepancy rather than silently selecting a larger VM.
+
+There is no verified documented Spot selection in the AI Manager workflow used here. Do not assume the calculator's prices or a portal deployment are Spot prices. Review VM cost per replica, CPU system capacity, disks, networking and monitoring; short tests still cost money. Budget alerts are not spending caps.
 
 ### (Optional) Bring your own model source
 
@@ -59,29 +97,41 @@ Only if your chosen model requires it, use an approved secret-handling process f
 
 ```powershell
 # e.g. a Hugging Face token so gated open-weight models can be pulled
-az aimanager modelsource create -g $rg --aimanager aim-caldova -n hf --source-type HuggingFace --token <hf_token>
+az aimanager modelsource create -g $rg --aimanager $manager -n hf --source-type HuggingFace --token <hf_token>
 ```
 
 For a deployment that needs this source, retrieve its resource ID and supply `--model-source-resource-id` as described in the [modelsource reference](https://learn.microsoft.com/cli/azure/aimanager/modelsource). Creating an unused source does not change the default catalog deployment below.
 
-### Deploy a model (needs GPU quota)
+## 4. Deploy and test one replica
 
 ```powershell
-$modelId = az aimanager model show -l $loc -n <model-name> --query id -o tsv
-az aimanager namespace modeldeployment create -g $rg --aimanager aim-caldova --namespace line-troubleshooting `
-  -n qwen-chat --model-resource-id $modelId --vm-size Standard_NC24ads_A100_v4 --min-replicas 1 --max-replicas 2
+$vmSize = '<vm-size-from-approved-feasible-plan>'
+$modelId = az aimanager model show -l $loc -n $modelName --query id -o tsv
+az aimanager namespace modeldeployment create -g $rg --aimanager $manager --namespace line-troubleshooting `
+  -n qwen-chat --model-resource-id $modelId --vm-size $vmSize --replicas 1
 ```
 
-Replace angle-bracket placeholders and the example GPU SKU with a feasible catalog plan. The cost calculator estimates **VM cost per replica**, not full deployment/lab cost. Two replicas can increase cost. Wait for `provisioningState: Succeeded` and ready replicas, then test a chat request using the quickstart before changing the app:
+Replace the placeholders before execution; do not automatically substitute an A100 or other expensive SKU. The calculator estimates **VM cost per replica**, not full deployment/lab cost. Keep one fixed replica for this test. Wait for `provisioningState: Succeeded` and one ready replica:
 
 ```powershell
-az aimanager namespace modeldeployment show -g $rg --aimanager aim-caldova `
+az aimanager namespace modeldeployment show -g $rg --aimanager $manager `
   --namespace line-troubleshooting -n qwen-chat -o json
+
+$keys = az aimanager namespace list-accesskeys -g $rg --aimanager $manager -n line-troubleshooting -o json | ConvertFrom-Json
+if (-not $keys.endpoint -or -not $keys.primaryKey) { throw 'Missing endpoint or key; stop.' }
+$request = @{model='qwen-chat';messages=@(@{role='user';content='What does Kubernetes do?'})} | ConvertTo-Json -Depth 4
+Invoke-RestMethod -Method Post -Uri "$($keys.endpoint.TrimEnd('/'))/chat/completions" `
+  -Headers @{Authorization="Bearer $($keys.primaryKey)"} -ContentType 'application/json' -Body $request
+Remove-Variable keys
 ```
+
+Expect response text under `choices[0].message.content`. A ready model and a reachable endpoint are separate checkpoints. Keep credentials private. For a separate-region tier, test from an authorized client before considering the app cutover.
 
 > **No GPU quota?** Skip creation. The lab runs the same *endpoint-consumption pattern*, not AI Manager itself, on CPU with Ollama (`k8s/inference/ollama.yaml`, namespace `models`).
 
-### Point the agent at the AI Manager gateway
+## 5. Point the agent at the AI Manager gateway
+
+For a separate-region deployment, first have the platform owner verify routes, DNS, approved endpoint exposure and the agent's NetworkPolicy. Its baseline permits the original private inference subnet on TCP 11434 and public HTTPS, not an arbitrary new private gateway. Cross-region traffic can add latency and charges. If connectivity is not approved/working, keep this as a standalone playground/inference test and retain CPU chat.
 
 1. In the same PowerShell session, record the current endpoint/model for rollback. Start from the module 01 CPU baseline. Keep the vision endpoint on Ollama: its default otherwise follows the chat endpoint.
 2. Retrieve namespace credentials without printing them. Use the returned endpoint **as supplied**: do not append another `/v1` (see [endpoint guidance](https://learn.microsoft.com/azure/aks/ai-manager/connect-to-endpoint)).
@@ -89,7 +139,7 @@ az aimanager namespace modeldeployment show -g $rg --aimanager aim-caldova `
 
 ```powershell
 $oldConfig = kubectl --kubeconfig .kube/agents -n caldova get configmap agent-config -o json | ConvertFrom-Json
-$keys = az aimanager namespace list-accesskeys -g $rg --aimanager aim-caldova -n line-troubleshooting -o json | ConvertFrom-Json
+$keys = az aimanager namespace list-accesskeys -g $rg --aimanager $manager -n line-troubleshooting -o json | ConvertFrom-Json
 if (-not $oldConfig.data.LLM_BASE_URL -or -not $keys.endpoint -or -not $keys.primaryKey) {
   throw 'Missing baseline configuration or namespace credentials; stop before changing the app.'
 }
@@ -126,8 +176,10 @@ These are distinct permissions; the base deployment does not automatically grant
 
 ## Clean up this module
 
-If continuing the CPU lab, roll the app back first. Review AI Manager's cluster deletion policy/summary before removing it: this exercise attached a shared lab cluster. Do not delete the manager while assuming it will always leave compute untouched. Use deployment-only deletion from the linked management guide when appropriate.
+If continuing the CPU lab, roll the app back first. Review AI Manager's cluster deletion policy/summary before removing it: option A attached a shared lab cluster, while option B created separate compute. Do not assume deletion always leaves compute untouched. Use deployment-only deletion from the linked management guide when appropriate. For option B, include its separate group/managed resources in module 08; azd does not track them.
 
 ```powershell
-az aimanager delete -g $rg -n aim-caldova --yes
+az aimanager delete -g $rg -n $manager --yes
 ```
+
+**Carry forward:** baseline and GPU observations, model deployment name, nonsecret manager/group/region, approved connectivity and rollback settings. Continue to [module 03](03-foundry-aks-compute.md) even if this optional GPU exercise was skipped.

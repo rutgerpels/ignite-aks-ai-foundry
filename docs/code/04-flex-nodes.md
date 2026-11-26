@@ -2,7 +2,7 @@
 
 **Session ref:** ~15:00–19:00 ("heterogeneous infrastructure ... multiple plants ... some things on-prem").
 
-[Previous: hosting boundary](03-foundry-aks-compute.md) | [Portal equivalent: stage 6](00-portal-guide.md#6-bring-in-the-plant-host-visual-inspection-plus-bash) | [Next: isolation](05-pod-sandboxing-agent-sandbox.md)
+[Previous: hosting boundary](03-foundry-aks-compute.md) | [Code experience](README.md) | [Next: isolation](05-pod-sandboxing-agent-sandbox.md)
 
 **Learn:** VNet peering supplies an underlay, Unbounded-Net supplies pod routing, a Flex pool describes external capacity, and host bootstrap actually joins it. None alone makes the edge VM a usable Kubernetes node.
 
@@ -181,6 +181,6 @@ Talking point: this demonstrates plant-local tool placement using fictional data
 | `kubectl logs` times out | NSG/peering: AKS → node TCP 10250 |
 | Agent logs on host | `journalctl -u aks-flex-node-agent -f` |
 
-Use the [portal inspection route](00-portal-guide.md#6-bring-in-the-plant-host-visual-inspection-plus-bash) for VM identity, peering and workload views. The current documented end-to-end setup needs Bash and a host action; generic portal YAML support does not replace host bootstrap.
+For visual inspection, open the edge VM's identity and network interface, the two VNets' peering, and the plant cluster's node/workload views in Azure portal. The current documented end-to-end setup needs Bash and a host action; generic portal YAML support does not replace host bootstrap.
 
 **Carry forward:** dedicated kubeconfig, protected environment file, machine/pool identity and validated placement evidence. [Module 05](05-pod-sandboxing-agent-sandbox.md) returns to `aks-agents-*`; do not accidentally reuse the plant kubeconfig. Remove validation workloads when finished and follow [module 08](08-cleanup.md) for teardown.

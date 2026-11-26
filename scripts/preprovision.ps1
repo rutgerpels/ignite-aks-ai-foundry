@@ -23,5 +23,5 @@ if (-not (azd env get-value ALLOWED_SSH_SOURCE 2>$null)) {
 
 foreach ($f in 'AIManagerPreview', 'AKSFlexNodePreview', 'PutMachinePreview', 'KataVMIsolationPreview', 'KataVMIsolationV2Preview', 'AgentSandboxPreview') {
     $state = az feature show --namespace Microsoft.ContainerService --name $f --query properties.state -o tsv 2>$null
-    if ($state -ne 'Registered') { Write-Warning "Feature $f is '$state'. Run docs/01-prerequisites.md first." }
+    if ($state -ne 'Registered') { Write-Warning "Feature $f is '$state'. Complete module 01 in docs/code/ or docs/portal/ first." }
 }

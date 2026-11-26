@@ -1,6 +1,6 @@
 # 08 - Cleanup and verify
 
-[Previous: evidence and cost](07-observability-cost.md) | [Portal equivalent: stage 9](00-portal-guide.md#9-observe-cost-and-clean-up) | [Home](../README.md)
+[Previous: evidence and cost](07-observability-cost.md) | [Code experience](README.md) | [Lab home](../../README.md)
 
 **Learn:** teardown follows resource dependencies, including optional resources not tracked by azd. Stopping compute is not deletion.
 
@@ -22,19 +22,32 @@ az account show --query "{subscription:id,tenant:tenantId}" -o table
 az aimanager list -g $rg -o table
 ```
 
+This first list covers the **base group only**. If module 02 used a separate GPU group/region, also list managers in that recorded group and use its actual name for model cleanup; do not assume azd tracks it.
+
 Inspect the intended manager and deletion policy before proceeding. A manager can own/manage compute; deletion impact depends on configuration. The portal's **AI/ML > Deployments > Delete AI Manager** shows a summary. If you only want to remove a model, use [deployment-only deletion](https://learn.microsoft.com/azure/aks/ai-manager/manage-deployments#delete-a-model-deployment) instead.
 
 Once its full deletion impact is approved:
 
 ```powershell
-az aimanager delete -g $rg -n <ai-manager-name> --yes
+az aimanager delete -g <actual-manager-resource-group> -n <ai-manager-name> --yes
 # Optional pool-only deletion; unnecessary if deleting the entire plant cluster:
 az aks nodepool delete -g $rg --cluster-name (azd env get-value AKS_PLANT_NAME) -n plant2edge --no-wait
 ```
 
 Replace placeholders and wait for deletions to finish before proceeding. Do not run these commands against a manager/pool you skipped creating.
 
-## 3. Delete the base: choose one route
+## 3. Delete the separate GPU group, if created
+
+After model/manager deletion and review of its owned cluster/managed groups, remove the disposable GPU group only if it contains nothing to retain:
+
+```powershell
+az group delete -n <recorded-gpu-test-group> --yes
+az group exists -n <recorded-gpu-test-group>
+```
+
+Expect `false` after completion. Inspect residual owner-managed resources and deletion errors; do not delete arbitrary managed groups to bypass a service. Skip this section if you reused the baseline inference cluster. Do not use the GPU group as the target of later base-environment commands.
+
+## 4. Delete the base: choose one route
 
 **Code route:** from the repo root, verify `azd env list` selects the intended environment, review the target inventory, then:
 
@@ -46,7 +59,7 @@ azd down --purge --force
 
 **Portal route:** open the dedicated lab resource group in Azure portal, review its resources/dependencies, choose **Delete resource group**, enter the requested name and confirm. Inspect the deletion result. Check AKS-managed groups and optional resources outside the group separately; portal deletion does not update local azd environment state or automatically purge all soft-deleted services. Do not run portal and azd teardown concurrently.
 
-## 4. Verify completion
+## 5. Verify completion
 
 1. Refresh the Azure resource list and verify the lab group and its owned resources are gone. CLI equivalent for the main group:
 
