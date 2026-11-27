@@ -11,7 +11,7 @@ A reproducible lab based on the Microsoft Ignite session **"Deploy and run Micro
 | **Portal experience** | [Portal modules 01–08](docs/portal/README.md) | Portal/browser steps, visual checkpoints and required terminal steps together in each module. No code-track detours. |
 | **Code experience** | [Code modules 01–08](docs/code/README.md) | PowerShell/Bash, Bicep and Kubernetes workflows, with their own prerequisites, checkpoints and cleanup. |
 
-Choose one track and stay in its folder from setup to cleanup. Both tracks describe **the same baseline deployment**; do not deploy it twice. Module 02 also explains the optional separate-region GPU deployment without moving the base. Learn the CPU agent/tool/model flow first, then change one layer at a time: model serving → hosting boundary → edge compute → isolation → network policy → evidence/cost. Preview exercises are optional and access-dependent. The Foundry own-AKS hosting path is an **access-gated discussion**, not a verified public walkthrough; the base is a plain FastAPI app on AKS.
+Choose one track and stay in its folder from setup to cleanup. Both tracks describe **the same baseline deployment**; do not deploy it twice. Module 02 offers CPU Ollama, Foundry serverless chat without AKS GPU VM quota, or optional AI Manager GPU inference (including a separate-region option). Foundry inference is not AI Manager-on-AKS. Learn the CPU agent/tool/model flow first, then change one layer at a time: model serving → hosting boundary → edge compute → isolation → network policy → evidence/cost. Preview exercises are optional and access-dependent. The Foundry own-AKS hosting path is an **access-gated discussion**, not a verified public walkthrough; the base is a plain FastAPI app on AKS.
 
 Portal capabilities and preview requirements were checked against Microsoft documentation on **25 November 2026**. Each module links its authoritative references; the [portal source register](docs/portal/README.md#source-register) collects them. This is not a claim that every preview was deployed or tested.
 
@@ -31,6 +31,7 @@ flowchart LR
     P -. "peering + module 04 networking/bootstrap" .-> E
     A -. "configured telemetry: verify receipt" .-> T["Application Insights / Log Analytics"]
     F["Foundry account + project"] -. "monitoring connection" .-> T
+    A -. "module 02 optional HTTPS chat" .-> S["Foundry serverless model"]
     A -. "module 02 endpoint change" .-> G["Optional AI Manager GPU model"]
 ```
 
@@ -67,7 +68,7 @@ After the `pull-models` job completes, open `AGENT_URL`, pick **line-7** and run
 
 **Guided** runs a fixed tool plan; **Autonomous** lets the model choose the MCP tools via function calling. **Inspect** sends a camera frame to a vision model.
 
-Models: `qwen2.5:1.5b` (chat) and `moondream` (vision) on CPU with Ollama, so no GPU quota is needed for the base. Duration varies; record your baseline. The 1.5B model is weak at multi-step tool calling in **Autonomous** mode (it often stops after one tool). Module 02 compares a GPU model after endpoint, authentication and rollout changes; it is not just a ConfigMap change.
+Models: `qwen2.5:1.5b` (chat) and `moondream` (vision) on CPU with Ollama, so no GPU quota is needed for the base. Duration varies; record your baseline. The 1.5B model is weak at multi-step tool calling in **Autonomous** mode and may time out. Module 02 can compare Foundry serverless chat or a GPU model after endpoint, authentication and rollout changes; vision stays on CPU.
 
 **Checkpoint:** Guided returns analysis and tool timings; an assigned IP or `/healthz` alone does not prove model readiness. The demo is unauthenticated HTTP with fictional data, not a production endpoint. If governance-managed NSGs block the URL, do not bypass them: module 01 in either track includes the approved-access procedure.
 

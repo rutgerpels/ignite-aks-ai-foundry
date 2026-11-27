@@ -4,6 +4,62 @@
 
 **Learn:** replace CPU chat inference while retaining the browser agent, MCP tools and vision endpoint from module 01. First prove the model independently; only then change the application.
 
+**Choose:** retain CPU Ollama, follow the [Foundry serverless alternative](#foundry-serverless-chat-no-aks-gpu), or use the AI Manager GPU track below. Foundry does not need AKS GPU VM quota or AI Manager registration.
+
+## Foundry serverless chat (no AKS GPU)
+
+The AKS app calls a **Foundry-hosted** model over HTTPS; it does not create an AI Manager, AKS gateway or GPU inference workload. AI Manager manages model serving and a gateway on AKS; it is more than an API client and is distinct from KAITO. Foundry and AI Manager can both expose OpenAI-compatible inference, but compute ownership, networking and operations differ. Ollama continues providing CPU vision.
+
+### Prepare and test a model
+
+1. Establish module 01 Guided and Inspect on CPU. Keep the existing deployment and its sandbox/runtime and policies; do not rerun `azd up`.
+2. Confirm an approved subscription/payment method, existing `aif-caldova-*` account and `caldova-line-troubleshooting` project, **Cognitive Services Contributor** or equivalent to create deployments, permission to retrieve the resource key, and Kubernetes access to edit the agents cluster. Local key authentication must be enabled. Keys grant broad resource access; production should use Entra/workload identity instead. This sample uses a static key, not workload identity.
+3. In [Foundry](https://ai.azure.com), select the existing project. Open **Build > Catalog > Model Catalog**, inspect `gpt-4o-mini` or another Azure OpenAI model supporting Chat Completions and function calling. Select **Deploy > Custom settings**, select the existing resource/project and a supported **Global Standard** or other approved **Standard** serverless pay-per-token type. Record the deployment name. Wait for **Succeeded** under **Build > Models**.
+4. First review model price, input/output token usage, budget, regional/model TPM and request-rate quota, and processing residency. Global Standard can process in any Azure region. No AKS GPU VM quota is required, but available model quota, region, access and capacity are not guaranteed. Budget alerts are not spending caps. Azure-sold models do not need a Marketplace subscription; partner offerings may. **Managed compute** is different: dedicated GPU capacity with separate Foundry accelerator quota. If the gates fail, keep CPU.
+5. Test a simple question in the model playground. From its **Code**/endpoint details obtain the **Azure OpenAI v1** base URL `https://<resource>.openai.azure.com/openai/v1/`, actual deployment name, and resource API key privately. The deployment name—not the catalog model/version—is sent in `model`. The v1 route needs no `api-version` query parameter; partner-specific endpoint/auth recipes are not covered here.
+6. Ask the platform owner to confirm approved pod-to-endpoint DNS and HTTPS, including NSG/firewall, proxy, Grid policy and resource network restrictions. Baseline `agent-egress` allows public IPv4 TCP 443, not private endpoint IPs; a private route needs an approved policy and DNS design. Playground success does not prove pod connectivity. Do not weaken governance.
+
+### Switch the existing app in Azure portal
+
+Use an approved private editing session, not screen sharing or screenshots. Never put real keys in Git, a file, ConfigMap, URL or logs. Kubernetes Secrets are readable by authorized cluster users; verify approved storage and RBAC. If `llm-key` already exists or `LLM_API_KEY` is already set in the agent Deployment, stop and resolve ownership rather than overwriting either.
+
+1. In the **agents cluster** > **Kubernetes resources > Configuration**, namespace `caldova`, inspect `agent-config`. Record its original CPU `LLM_BASE_URL` and `LLM_MODEL`; stop if this is not the module 01 CPU baseline. Keep `VISION_MODEL: moondream`.
+2. Use **Create > Apply a YAML** to create the Secret below, replacing the placeholder privately. Do not save the filled YAML to a file:
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: llm-key
+     namespace: caldova
+   type: Opaque
+   stringData:
+     LLM_API_KEY: "<Foundry-resource-key>"
+   ```
+
+3. Edit `agent-config`, preserving its MCP and telemetry fields. Set `LLM_BASE_URL` to the exact Foundry v1 base URL, `LLM_MODEL` to the actual deployment name, `VISION_BASE_URL` to the **recorded CPU URL**, and `VISION_API_KEY` to `not-needed`. This keeps camera requests on Ollama rather than sending them to Foundry.
+4. Under **Workloads**, edit Deployment `caldova-agent`. Preserve its image, `runtimeClassName`, node selector, limits, probes, `envFrom` and any existing `env` entries. Under the `agent` container add the following entry to `env` (create `env` only if absent):
+
+   ```yaml
+   env:
+     - name: LLM_API_KEY
+       valueFrom:
+         secretKeyRef:
+           name: llm-key
+           key: LLM_API_KEY
+   ```
+
+   Save and wait for a Ready replacement pod. ConfigMap changes alone do not restart a process. For later config-only edits, change a pod-template annotation such as `spec.template.metadata.annotations.lab.caldova/restarted-at` to a new quoted UTC timestamp.
+5. Open `/api/config` through the approved app access path. Check Foundry endpoint/deployment; run **Guided**, **Autonomous**, then **Inspect**. Guided uses a fixed MCP plan; Autonomous requests model tool calls and can still fail, time out or choose differently. Inspect must still return an Ollama `moondream` description. Compare timings and output; pod readiness is not an inference test. Use fictional data: sample telemetry may capture prompts/responses.
+
+**Recovery:** 401/403 suggests credentials or resource network restrictions; 404 suggests endpoint/deployment mismatch; 429 suggests quota/rate limits; timeouts suggest connectivity. Do not print keys. For rollback, restore the recorded CPU chat URL/model in the ConfigMap, retain CPU vision settings, remove only the `LLM_API_KEY` entry added to the Deployment, and change the pod-template annotation to roll out. Verify Guided and Inspect. Delete `llm-key` only after no workload references it. In Foundry **Build > Models**, delete only the specific deployment you created when no other consumer needs it; retain shared account/project and check billing. If an intermediate edit failed, inspect the nonsecret current state before retrying or rolling back.
+
+`scripts/deploy-apps.ps1` reapplies the baseline ConfigMap, so review/reapply deliberate overrides after redeploy. Continue to modules 03–08: Foundry model use does not register a hosted agent; Flex still requires networking, and Sandbox/Grid have independent preview gates.
+
+**References:** [Foundry deployment](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/deploy-foundry-models), [endpoints and authentication](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/endpoints), [deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types), [managed compute](https://learn.microsoft.com/azure/foundry/concepts/deployments-overview), [function calling](https://learn.microsoft.com/azure/foundry/openai/how-to/function-calling).
+
+## AI Manager GPU track
+
 **Before:** a working CPU baseline, `AIManagerPreview` registered, approved GPU cost/quota, and access to the exact regional model/SKU. AI Manager is optional and is not the separate KAITO AI toolchain operator. Skip paid creation if these gates fail.
 
 **Permissions:** AIManager Contributor manages deployments; Model User reads catalog/costs; Inference User retrieves namespace keys or invokes with Entra ID. Obtain appropriately scoped roles from an authorized administrator. Azure resource access and Kubernetes editing permissions are different.

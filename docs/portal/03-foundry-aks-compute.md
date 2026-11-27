@@ -21,13 +21,13 @@
 
 1. Inspect the project's monitoring connection. The base Bicep creates an Application Insights connection; it does not create a hosted agent or an own-AKS hosting connection.
 2. Return to Azure portal > `aks-agents-*` > **Kubernetes resources > Workloads**, namespace `caldova`. Inspect Deployment `caldova-agent`, its container image and running pod.
-3. Compare with the Caldova browser's `/api/config`: the endpoint points to Ollama, or to the AI Manager model you explicitly configured in module 02.
-4. Explain the ownership boundary: Kubernetes manages the FastAPI Deployment; Ollama/AI Manager serves model requests; the Foundry project exists separately.
+3. Compare with the Caldova browser's `/api/config`: the endpoint points to Ollama, a Foundry serverless model, or an AI Manager model you explicitly configured in module 02.
+4. Explain the ownership boundary: Kubernetes manages the FastAPI Deployment; Ollama, Foundry or AI Manager serves chat. Using a Foundry model does not register the app as a Foundry hosted agent.
 
 ```mermaid
 flowchart LR
     P["Foundry project"] -. "monitoring connection" .-> T["Application Insights"]
-    K["AKS: Caldova FastAPI Deployment"] --> M["Ollama OR AI Manager endpoint"]
+    K["AKS: Caldova FastAPI Deployment"] --> M["Ollama OR Foundry serverless OR AI Manager"]
     K -. "configured telemetry; verify receipt" .-> T
 ```
 

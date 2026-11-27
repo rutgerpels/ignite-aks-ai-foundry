@@ -15,7 +15,7 @@
 3. If retaining the CPU app but deleting its GPU model, perform the rollback below **before** removing inference.
 4. If deleting the full lab, stop using its endpoints and continue with the dependency order below.
 
-### Roll back GPU chat when retaining the CPU app
+### Roll back Foundry or GPU chat when retaining the CPU app
 
 On the **agents cluster** in namespace `caldova`:
 
@@ -31,6 +31,7 @@ If rollback fails, resolve the configuration/network issue before deleting the m
 ## 2. Remove optional consumers and attachments
 
 1. **Foundry:** if you actually created hosted agents/versions or own-AKS attachments, remove them through the current approved preview procedure. The base app is not a Foundry hosted agent.
+   If you created a serverless chat deployment, delete only that specific deployment in **Build > Models** after its consumers are rolled back; preserve shared account/project resources and check costs.
 2. **Sandbox:** on the appropriate agents cluster, delete only test Sandboxes/claims/warm pools and the disposable `agent-demo` namespace created for this exercise. Coordinate extension/new-pool deletion with the owner after removing consumers; preserve shared runtime capacity.
 3. **Grid:** open **Grid members > Members**, unenroll the lab workloads, then **Attached resources**, detach the cluster. Do this **before cluster deletion**.
 4. Delete the lab Grid when no longer used. Review and remove unused lab-specific **policy-group resources separately**; they are independent of the Grid. Preserve shared policies, Content Safety and logging resources.

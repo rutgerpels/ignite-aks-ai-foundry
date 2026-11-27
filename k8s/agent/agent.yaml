@@ -8,6 +8,8 @@ metadata:
 data:
   LLM_BASE_URL: "http://${LLM_IP}:11434/v1"
   LLM_MODEL: "qwen2.5:1.5b"
+  VISION_BASE_URL: "http://${LLM_IP}:11434/v1"
+  VISION_API_KEY: "not-needed"
   VISION_MODEL: "moondream"
   MCP_PLANT_SIGNALS_URL: "http://mcp-plant-signals:8080/mcp"
   MCP_MAINTENANCE_URL: "http://mcp-maintenance:8080/mcp"
